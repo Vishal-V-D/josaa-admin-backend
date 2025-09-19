@@ -14,23 +14,27 @@ app = FastAPI(
     version="1.0"
 )
 
-# CORS Middleware
+# ---------- CORS Middleware ----------
+# List all allowed origins explicitly
+origins = [
+    "https://josaa-admin-page.netlify.app",  # Production frontend
+    "http://localhost:3000",                  # Local frontend for dev
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Logger
+# ---------- Logger ----------
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("combined-api")
 logger.info("🚀 Combined Backend starting...")
 
 # ---------- Include Routers ----------
-# This is the "connector" logic. Each router's endpoints are included
-# in the main app, and will be available on a single port.
 app.include_router(college_router)
 app.include_router(adex_router)
 app.include_router(exam_router)
@@ -41,5 +45,4 @@ app.include_router(exam_router)
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))  # Render provides PORT dynamically
     logger.info(f"🚀 Starting backend on 0.0.0.0:{port}")
-    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
