@@ -129,34 +129,61 @@ async def add_college_exam(request: Request):
         item_uuid = payload.get("uuid") or str(uuid.uuid4())
         
         supabase.table("college_specific_exams").insert({"id": item_uuid, "data": basic_data}).execute()
-        supabase.table("collegespecificexams").insert({"uui": item_uuid, "details": full_details}).execute()
+        supabase.table("collegespecificexams").insert({"uuid": item_uuid, "details": full_details}).execute()
         
         return {"message": "College exam added successfully", "uuid": item_uuid}
     except Exception as e:
         logger.error(f"❌ add_college_exam error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# -------------------------
+# ✅ Updated PUT Endpoints
+# -------------------------
 @router.put("/exams/{item_uuid}")
 async def update_exam(item_uuid: str, request: Request):
     try:
         payload = await request.json()
         basic_data = payload.get("basic_data", {})
         full_details = payload.get("full_details", {})
-        
+
+        print(f"➡️ Received update request for UUID: {item_uuid}")
+        print(f"📦 Incoming payload: {payload}")
+
+        # ✅ Check in exams_name
         basic_res = supabase.table("exams_name").select("id").eq("id", item_uuid).execute()
         if basic_res.data:
+            print(f"✅ Found in exams_name, updating...")
+
             supabase.table("exams_name").update({"data": basic_data}).eq("id", item_uuid).execute()
-            supabase.table("exams").update({"details": full_details}).eq("uuid", item_uuid).execute()
-            return {"message": "Exam updated successfully", "uuid": item_uuid}
-        
+            exam_name = basic_data.get("Name") or basic_data.get("name") or "Unknown"
+
+            supabase.table("exams").upsert({
+                "uuid": item_uuid,
+                "name": exam_name,
+                "details": full_details
+            }, on_conflict="uuid").execute()
+
+            return {"message": "Exam replaced successfully", "uuid": item_uuid}
+
+        # ✅ Check in college_specific_exams
         basic_res = supabase.table("college_specific_exams").select("id").eq("id", item_uuid).execute()
         if basic_res.data:
+            print(f"✅ Found in college_specific_exams, updating...")
+
             supabase.table("college_specific_exams").update({"data": basic_data}).eq("id", item_uuid).execute()
-            supabase.table("collegespecificexams").update({"details": full_details}).eq("uuid", item_uuid).execute()
-            return {"message": "College exam updated successfully", "uuid": item_uuid}
-            
+            exam_name = basic_data.get("Name") or basic_data.get("name") or "Unknown"
+
+            supabase.table("collegespecificexams").upsert({
+                "uuid": item_uuid,
+                "name": exam_name,
+                "details": full_details
+            }, on_conflict="uuid").execute()
+
+            return {"message": "College exam replaced successfully", "uuid": item_uuid}
+
         raise HTTPException(status_code=404, detail="UUID not found in any table")
     except Exception as e:
+        print(f"🔥 Error while replacing exam: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/college-exams/{item_uuid}")
@@ -166,18 +193,42 @@ async def update_college_exam(item_uuid: str, request: Request):
         basic_data = payload.get("basic_data", {})
         full_details = payload.get("full_details", {})
 
+        print(f"➡️ Received update request for College UUID: {item_uuid}")
+        print(f"📦 Incoming payload: {payload}")
+
+        # ✅ Check in college_specific_exams
         basic_res = supabase.table("college_specific_exams").select("id").eq("id", item_uuid).execute()
         if basic_res.data:
-            supabase.table("college_specific_exams").update({"data": basic_data}).eq("id", item_uuid).execute()
-            supabase.table("collegespecificexams").update({"details": full_details}).eq("uuid", item_uuid).execute()
-            return {"message": "College exam updated successfully", "uuid": item_uuid}
+            print(f"✅ Found in college_specific_exams, updating...")
 
+            supabase.table("college_specific_exams").update({"data": basic_data}).eq("id", item_uuid).execute()
+            exam_name = basic_data.get("Name") or basic_data.get("name") or "Unknown"
+
+            supabase.table("collegespecificexams").upsert({
+                "uuid": item_uuid,
+                "name": exam_name,
+                "details": full_details
+            }, on_conflict="uuid").execute()
+
+            return {"message": "College exam replaced successfully", "uuid": item_uuid}
+
+        # ✅ Check in exams_name
         basic_res = supabase.table("exams_name").select("id").eq("id", item_uuid).execute()
         if basic_res.data:
+            print(f"✅ Found in exams_name, updating...")
+
             supabase.table("exams_name").update({"data": basic_data}).eq("id", item_uuid).execute()
-            supabase.table("exams").update({"details": full_details}).eq("uuid", item_uuid).execute()
-            return {"message": "Exam updated successfully", "uuid": item_uuid}
+            exam_name = basic_data.get("Name") or basic_data.get("name") or "Unknown"
+
+            supabase.table("exams").upsert({
+                "uuid": item_uuid,
+                "name": exam_name,
+                "details": full_details
+            }, on_conflict="uuid").execute()
+
+            return {"message": "Exam replaced successfully", "uuid": item_uuid}
 
         raise HTTPException(status_code=404, detail="UUID not found in any table")
     except Exception as e:
+        print(f"🔥 Error while replacing college exam: {e}")
         raise HTTPException(status_code=500, detail=str(e))
