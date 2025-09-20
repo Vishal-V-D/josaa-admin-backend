@@ -17,6 +17,7 @@ app = FastAPI(
 # ---------- CORS Middleware ----------
 # List all allowed origins explicitly
 origins = [
+    "https://admin-page-josaa.netlify.app",
     "https://josaa-admin-page.netlify.app",  # Production frontend
     "http://localhost:3000",                  # Local frontend for dev
 ]
