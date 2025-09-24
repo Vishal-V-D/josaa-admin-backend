@@ -9,7 +9,7 @@ import os
 router = APIRouter(prefix="/api", tags=["Gemini Table Parser"])
 
 # -------------------- Gemini AI Setup --------------------
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY") or "AIzaSyDRi1ZDzNLDT3WU4gCyRioQJfRqodbipDk"
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY") or "AIzaSyBtC5AVohkZja4xUtOOUsE_CHqPCdPGavY"
 if not GOOGLE_API_KEY:
     raise RuntimeError("GOOGLE_API_KEY not found. Please set the environment variable.")
 
