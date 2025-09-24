@@ -14,7 +14,7 @@ import google.generativeai as genai
 load_dotenv()
 SUPABASE_URL: str = os.environ.get("SUPABASE_URL") or "https://drdxhvqstjlxguyqpetq.supabase.co"
 SUPABASE_KEY: str = os.environ.get("SUPABASE_KEY") or "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZHhodnFzdGpseGd1eXFwZXRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyOTI0NTksImV4cCI6MjA2OTg2ODQ1OX0.xd8YlNV8qV58-n1BG5jvcMGmtkH5dWUh92xzKR4JAnI"
-GOOGLE_API_KEY = "AIzaSyDLTpXa8KpDzKQ0A-cH0_ckyKlpWbAyQd0"
+GOOGLE_API_KEY = "AIzaSyDBZrol2DDNOExT3b0qS8yl-nZkO3DQldA"
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise ValueError("Supabase URL and Key must be set")
