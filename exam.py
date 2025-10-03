@@ -1,7 +1,7 @@
 import os
 import logging
 import uuid
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request,Body
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -153,3 +153,48 @@ async def get_college_exams():
         return {"count": len(response.data), "data": response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 
+
+
+
+@app.post("/update-exam-order")
+async def update_college_exams_order(payload: dict = Body(...)):
+    """
+    Update only the 'sort_order' column in the 'exams_name' table.
+    Now accepts both 'general' and 'college' arrays for flexibility.
+    """
+    general = payload.get("general", [])
+    college = payload.get("college", [])
+    
+    # Combine both arrays (you're only using general now)
+    items_to_update = general + college
+    
+    if not items_to_update:
+        raise HTTPException(status_code=400, detail="Missing exam data to update.")
+
+    try:
+        updated_count = 0
+        for item in items_to_update:
+            # Fetch the row first to check if it exists
+            existing = supabase.table("exams_name").select("id, sort_order") \
+                .eq("id", item["id"]).execute()
+
+            if existing.data:
+                logger.info(f"Updating sort_order for id={item['id']} from {existing.data[0]['sort_order']} to {item['sort_order']}")
+                
+                # Update the sort_order
+                supabase.table("exams_name").update(
+                    {"sort_order": int(item["sort_order"])}
+                ).eq("id", item["id"]).execute()
+                
+                updated_count += 1
+            else:
+                logger.warning(f"Skipping id={item['id']} — not found in DB")
+
+        return {
+            "message": f"Sort order updated successfully for {updated_count} exam(s).",
+            "updated_count": updated_count
+        }
+
+    except Exception as e:
+        logger.error(f"⚠ Failed to update sort order: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
