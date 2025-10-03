@@ -156,7 +156,7 @@ async def get_college_exams():
 
 
 
-@app.post("/update-exam-order")
+@router.post("/update-exam-order")
 async def update_college_exams_order(payload: dict = Body(...)):
     """
     Update only the 'sort_order' column in the 'exams_name' table.
