@@ -33,7 +33,7 @@ TABLE_MAPPING = {
     "GFTS": "GFTS"  # Just in case
 }
 
-@app.route('/update-college-order', methods=['POST'])
+@router.post("/update-college-order")
 def update_college_order():
     try:
         data = request.json
