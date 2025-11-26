@@ -14,7 +14,7 @@ SUPABASE_KEY: str = os.environ.get("SUPABASE_KEY") or "eyJhbGciOiJIUzI1NiIsInR5c
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ---------- Router Instance ----------
-router = APIRouter(prefix="/")
+router = APIRouter()
 
 # ---------- Constants ----------
 TYPE_TO_TABLE = {
