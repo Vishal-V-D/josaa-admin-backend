@@ -198,35 +198,53 @@ def delete_college(id: str, type: str):
         raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
 @router.post("/add-college")
-def add_new_college(request: Request):
+def add_new_college():
     try:
-        data = request.json()
+        data = request.json
+        print("Received add request with data:")
+        print(json.dumps(data, indent=2))
+
         college_name = data.get("college_name")
         college_type = data.get("type")
         full_data = data.get("full_data")
         basic_data = data.get("basic_data")
-        
-        if not all([college_name, college_type, full_data, basic_data]):
-            raise HTTPException(status_code=400, detail="Missing required data")
-            
+
+        if not college_name or not college_type or not full_data or not basic_data:
+            return jsonify({"error": "Missing required data"}), 400
+
         table_name = TYPE_TO_TABLE.get(college_type.upper())
         if not table_name:
-            raise HTTPException(status_code=400, detail="Invalid college type")
-            
+            print(f"Invalid college type received: {college_type}")
+            return jsonify({"error": "Invalid college type"}), 400
+        
         new_uuid = str(uuid.uuid4())
-        
-        colleges_insert_data = {"uuid": new_uuid, "college_name": college_name, "data": full_data}
+
+        # Insert into the main 'colleges' table
+        colleges_insert_data = {
+            "uuid": new_uuid,
+            "college_name": college_name,
+            "data": full_data
+        }
         res_colleges = supabase.table("colleges").insert(colleges_insert_data).execute()
-        
-        type_table_insert_data = {"id": new_uuid, "data": basic_data}
+
+        # Insert into the specific type table
+        type_table_insert_data = {
+            "id": new_uuid,
+            "data": basic_data
+        }
         res_type_table = supabase.table(table_name).insert(type_table_insert_data).execute()
-        
+
         if res_colleges.data and res_type_table.data:
-            return {"message": "College added successfully", "uuid": new_uuid}
+            print("College added successfully to both tables.")
+            return jsonify({"message": "College added successfully", "uuid": new_uuid}), 201
         else:
-            raise HTTPException(status_code=500, detail="Failed to add college")
+            print(f"Failed to add college. Supabase responses: Colleges Table: {res_colleges}, Type Table: {res_type_table}")
+            return jsonify({"error": "Failed to add college"}), 500
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+        print(f"Error adding college data: {e}")
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
+
 
 @router.post("/upload-image")
 def upload_image(request: Request):
