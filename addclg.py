@@ -3,7 +3,7 @@ import json
 import base64
 from io import BytesIO
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Query
-
+from fastapi.responses import JSONResponse
 from supabase import create_client, Client
 from dotenv import load_dotenv
 import uuid
