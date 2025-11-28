@@ -6,6 +6,10 @@ from fastapi import APIRouter, HTTPException, Request
 from supabase import create_client, Client
 from dotenv import load_dotenv
 import uuid
+import openpyxl
+import csv
+from io import StringIO
+import json
 
 # ---------- Supabase Setup ----------
 load_dotenv()
@@ -32,6 +36,193 @@ TABLE_MAPPING = {
     "GFTI": "GFTS", # Mapped 'GFTI' to your specific table 'GFTS'
     "GFTS": "GFTS"  # Just in case
 }
+
+def process_csv_with_smart_fill(file_stream, filter_name=None):
+    print(f"\n🔹 [CSV PROCESSOR] Starting CSV Processing... (Filter: '{filter_name}')")
+    try:
+        raw_data = file_stream.read().decode("utf-8-sig")
+        stream = StringIO(raw_data)
+        reader = csv.reader(stream)
+
+        headers = next(reader, None)
+        if not headers:
+            return []
+
+        headers = [h.strip() for h in headers if h.strip()]
+
+        # Identify filter column
+        target_col_idx = -1
+        if filter_name:
+            lower_headers = [h.lower() for h in headers]
+            possible_names = ["institute name", "institute", "college name", "name", "college"]
+            for name in possible_names:
+                if name in lower_headers:
+                    target_col_idx = lower_headers.index(name)
+                    break
+
+        data = []
+        filtered_data = []
+        previous_row_values = [""] * len(headers)
+
+        for row_idx, row in enumerate(reader):
+
+            if len(row) < len(headers):
+                row += [""] * (len(headers) - len(row))
+
+            processed_row = {}
+            current_row_values = []
+
+            for col_idx, value in enumerate(row[:len(headers)]):
+                cleaned_value = value.strip()
+                should_fill = (row_idx > 0) and (cleaned_value == "") and (col_idx < 3)
+
+                final_value = previous_row_values[col_idx] if should_fill else cleaned_value
+                processed_row[headers[col_idx]] = final_value
+                current_row_values.append(final_value)
+
+            data.append(processed_row)
+            previous_row_values = current_row_values
+
+            # Filtering Logic
+            if filter_name:
+                match = False
+                if target_col_idx != -1:
+                    if filter_name.lower() in str(current_row_values[target_col_idx]).lower():
+                        match = True
+                else:
+                    for val in current_row_values:
+                        if filter_name.lower() in str(val).lower():
+                            match = True
+                            break
+                if match:
+                    filtered_data.append(processed_row)
+
+        if filter_name:
+            return filtered_data if filtered_data else data
+
+        return data
+
+    except Exception as e:
+        print("❌ CSV ERROR:", e)
+        raise e
+
+
+# ---------------------------------------
+# EXCEL PROCESSOR
+# ---------------------------------------
+def process_excel_with_smart_fill(file_stream, filter_name=None):
+    print(f"\n🔸 [EXCEL PROCESSOR] Starting Excel Processing... (Filter: '{filter_name}')")
+    try:
+        wb = openpyxl.load_workbook(file_stream, data_only=True)
+        sheet = wb.active
+
+        headers = []
+        header_row_index = -1
+
+        # Find headers in first 20 rows
+        for i, row in enumerate(sheet.iter_rows(min_row=1, max_row=20, values_only=True)):
+            valid_cells = [str(c).strip() for c in row if c]
+            if valid_cells:
+                header_row_index = i + 1
+                headers = [str(c).strip() for c in row if c]
+                break
+
+        if not headers:
+            return []
+
+        target_col_idx = -1
+        if filter_name:
+            lower_headers = [h.lower() for h in headers]
+            possible = ["institute name", "institute", "college name", "name", "college"]
+            for name in possible:
+                if name in lower_headers:
+                    target_col_idx = lower_headers.index(name)
+                    break
+
+        data = []
+        filtered_data = []
+        previous_row_values = [""] * len(headers)
+
+        # Process data rows
+        for row_idx, row in enumerate(sheet.iter_rows(
+                min_row=header_row_index + 1, values_only=True)):
+
+            if all(cell is None or str(cell).strip() == "" for cell in row):
+                continue
+
+            row_list = list(row)
+            if len(row_list) < len(headers):
+                row_list += [None] * (len(headers) - len(row_list))
+
+            processed_row = {}
+            current_row_values = []
+
+            for col_idx, value in enumerate(row_list[:len(headers)]):
+                v = str(value).strip() if value else ""
+                should_fill = (len(data) > 0) and (v == "") and (col_idx < 3)
+                final_value = previous_row_values[col_idx] if should_fill else v
+
+                processed_row[headers[col_idx]] = final_value
+                current_row_values.append(final_value)
+
+            data.append(processed_row)
+            previous_row_values = current_row_values
+
+            # Filtering
+            if filter_name:
+                match = False
+                if target_col_idx != -1:
+                    if filter_name.lower() in str(current_row_values[target_col_idx]).lower():
+                        match = True
+                else:
+                    for val in current_row_values:
+                        if filter_name.lower() in str(val).lower():
+                            match = True
+                            break
+                if match:
+                    filtered_data.append(processed_row)
+
+        if filter_name:
+            return filtered_data if filtered_data else data
+
+        return data
+
+    except Exception as e:
+        print("❌ EXCEL ERROR:", e)
+        raise e
+
+
+# ---------------------------------------
+# FASTAPI ENDPOINT
+# ---------------------------------------
+@router.post("/api/convert-csv")
+async def convert_csv(
+    file: UploadFile = File(...),
+    filter_name: str = Query(None)
+):
+    try:
+        filename = file.filename.lower()
+
+        if filename.endswith(".csv"):
+            json_data = process_csv_with_smart_fill(await file.read(), filter_name)
+
+        elif filename.endswith(".xlsx") or filename.endswith(".xls"):
+            json_data = process_excel_with_smart_fill(file.file, filter_name)
+
+        else:
+            return JSONResponse(
+                {"error": "Unsupported file format. Use CSV or Excel."},
+                status_code=400
+            )
+
+        return JSONResponse(content=json_data, status_code=200)
+
+    except Exception as e:
+        print("❌ API ERROR:", e)
+        return JSONResponse({"error": "Failed to process file", "details": str(e)}, 500)
+
+
+
 
 @router.post("/update-college-order")
 def update_college_order():
