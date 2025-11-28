@@ -196,7 +196,7 @@ def process_excel_with_smart_fill(file_stream, filter_name=None):
 # ---------------------------------------
 # FASTAPI ENDPOINT
 # ---------------------------------------
-@router.post("/api/convert-csv")
+@router.post("/convert-csv")
 async def convert_csv(
     file: UploadFile = File(...),
     filter_name: str = Query(None)
