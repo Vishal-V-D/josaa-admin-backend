@@ -2,7 +2,8 @@ import os
 import json
 import base64
 from io import BytesIO
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Query
+
 from supabase import create_client, Client
 from dotenv import load_dotenv
 import uuid
