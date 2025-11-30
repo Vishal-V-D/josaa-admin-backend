@@ -350,27 +350,38 @@ def get_college_by_id_and_type(id: str, type: str):
         raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
 @router.put("/college/{id}/{type}")
-def update_college(id: str, type: str, request: Request):
+async def update_college(id: str, type: str, request: Request):
     try:
-        data = request.json()
+        # Read body correctly in FastAPI
+        data = await request.json()
+
         table_name = TYPE_TO_TABLE.get(type.upper())
         if not table_name:
             raise HTTPException(status_code=400, detail="Invalid college type")
-        
+
+        # --- Update type-specific table (IIT/IIIT/NIT/GFTI) ---
         type_table_update_data = {"data": data.get("basic_data")}
         res_type_table = supabase.table(table_name).update(type_table_update_data).eq("id", id).execute()
-        
+
+        # --- Update main "colleges" table ---
         full_data = data.get("full_data")
         if full_data:
-            colleges_table_update_data = {"college_name": data.get("college_name"), "data": full_data}
+            colleges_table_update_data = {
+                "college_name": data.get("college_name"),
+                "data": full_data
+            }
             res_colleges = supabase.table("colleges").update(colleges_table_update_data).eq("uuid", id).execute()
-        
-        if res_type_table.data and (not full_data or res_colleges.data):
-            return {"message": "College updated successfully"}
         else:
-            raise HTTPException(status_code=500, detail="Failed to update college")
+            res_colleges = {"data": True}  # skip check if full_data not provided
+
+        # --- Validate both updates ---
+        if res_type_table.data and res_colleges.get("data"):
+            return {"message": "College updated successfully"}
+
+        raise HTTPException(status_code=500, detail="Failed to update college")
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/college/{id}/{type}")
 def delete_college(id: str, type: str):
