@@ -38,10 +38,13 @@ TABLE_MAPPING = {
     "GFTS": "GFTS"  # Just in case
 }
 
-def process_csv_with_smart_fill(file_stream, filter_name=None):
+def process_csv_with_smart_fill(file_content, filter_name=None):
     print(f"\n🔹 [CSV PROCESSOR] Starting CSV Processing... (Filter: '{filter_name}')")
     try:
-        raw_data = file_stream.read().decode("utf-8-sig")
+        # FIX: The input is already bytes, so just decode it directly.
+        # Removed .read()
+        raw_data = file_content.decode("utf-8-sig") 
+        
         stream = StringIO(raw_data)
         reader = csv.reader(stream)
 
@@ -75,7 +78,9 @@ def process_csv_with_smart_fill(file_stream, filter_name=None):
 
             for col_idx, value in enumerate(row[:len(headers)]):
                 cleaned_value = value.strip()
-                should_fill = (row_idx > 0) and (cleaned_value == "") and (col_idx < 3)
+                # Smart fill logic: fill if empty and strictly data row (row_idx > 0 is not needed here as we skipped header)
+                # Note: 'reader' iterator starts after header, so row_idx 0 is actually the first data row.
+                should_fill = (cleaned_value == "") and (col_idx < 3) 
 
                 final_value = previous_row_values[col_idx] if should_fill else cleaned_value
                 processed_row[headers[col_idx]] = final_value
@@ -105,8 +110,8 @@ def process_csv_with_smart_fill(file_stream, filter_name=None):
 
     except Exception as e:
         print("❌ CSV ERROR:", e)
+        # It is better to re-raise the error so FastAPI can catch it or return the string
         raise e
-
 
 # ---------------------------------------
 # EXCEL PROCESSOR
