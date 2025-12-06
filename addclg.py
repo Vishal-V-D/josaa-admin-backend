@@ -226,64 +226,34 @@ async def convert_csv(
 
 
 @router.post("/update-college-order")
-def update_college_order():
+async def update_college_order(request: Request):
     try:
-        data = request.json
-        category = data.get('category') 
-        items = data.get('items')       
-
-        # --- 1. LOGGING: Print what we received ---
-        print("\n🔵 [DEBUG] Received /update-college-order request")
-        print(f"   Category: {category}")
-        print(f"   Items Count: {len(items) if items else 0}")
-        # ------------------------------------------
+        data = await request.json()  # correct FastAPI style
+        category = data.get('category')
+        items = data.get('items')
 
         if not category or not items:
-            print("❌ [ERROR] Missing 'category' or 'items' in payload")
-            return jsonify({"error": "Missing data"}), 400
+            return JSONResponse({"error": "Missing category or items"}, status_code=400)
 
-        # Get table name
         table_name = TABLE_MAPPING.get(category)
         if not table_name:
-            print(f"❌ [ERROR] No table found for category: {category}")
-            return jsonify({"error": "Invalid category"}), 400
+            return JSONResponse({"error": "Invalid category"}, status_code=400)
 
-        print(f"   Target Table: {table_name}")
-
-        # --- 2. FIX: ACTUAL UPDATE LOOP ---
         updated_count = 0
-        
         for item in items:
             record_id = item['id']
             new_order = item['sort_order']
-            
-            # Print specific item being updated (Optional: comment out if too spammy)
-            # print(f"   -> Updating ID {record_id} to Order {new_order}")
-
-            # Execute Supabase Update
-            # We use the supabase client defined globally in your app
-            response = supabase.table(table_name)\
-                .update({"sort_order": new_order})\
-                .eq("id", record_id)\
-                .execute()
-
-            # Verify if update happened
+            response = supabase.table(table_name).update({"sort_order": new_order}).eq("id", record_id).execute()
             if response.data:
                 updated_count += 1
-            else:
-                print(f"⚠️ [WARN] ID {record_id} not found or not updated.")
 
-        # --- 3. LOGGING: Final Result ---
-        print(f"✅ [SUCCESS] Updated {updated_count} records in '{table_name}'\n")
-        
-        return jsonify({
+        return JSONResponse({
             "message": f"Updated order for {table_name}",
             "updated_count": updated_count
-        }), 200
+        }, status_code=200)
 
     except Exception as e:
-        print(f"❌ [CRITICAL ERROR] {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return JSONResponse({"error": str(e)}, status_code=500)
 # ---------- College Endpoints ----------
 @router.get("/iit")
 def get_iits():
